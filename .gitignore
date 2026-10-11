@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+venv/
+.venv/
+
+# Environment variables
+.env
+
+# Training outputs and large model files
+runs/
+weights/
+*.pt
+*.onnx
+
+# Dataset
+data/
+datasets/
+
+# Generated outputs
+outputs/*
+!outputs/.gitkeep
+
+# Editor and operating system
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
