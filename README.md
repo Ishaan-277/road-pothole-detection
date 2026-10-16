@@ -1,21 +1,103 @@
-# AI-Based Road Pothole Detection & Monitoring
+# AI-Based Road Pothole Detection and Monitoring
 
-An AI-powered road inspection system that detects and localizes road defects, estimates visual severity, tracks defects across video frames, removes duplicate detections, and generates road-maintenance analytics.
+This project detects four road-defect classes with YOLO11 and classifies detected potholes by visual severity. The current repository contains a trained detection workflow, evaluation utilities, a manual severity-labelling workflow, and a ResNet18 severity-classification experiment.
 
-## Planned Features
+The project is currently an ML research prototype. Image detection and severity-model training are implemented; video tracking, cross-frame deduplication, analytics, and the dashboard remain planned.
 
-- Four-class road defect detection using YOLO
-- Visual severity estimation
-- Video processing using OpenCV
-- Multi-frame object tracking
-- Unique defect counting and road analytics
-- Interactive inspection dashboard
-- Exportable inspection reports
+## Current capabilities
 
-## Technology Stack
+- Detect longitudinal cracks, transverse cracks, alligator cracks, and potholes.
+- Train and compare YOLO11n and YOLO11s models.
+- Evaluate confidence and non-maximum-suppression thresholds.
+- Produce annotated validation samples and CSV detection reports.
+- Collect manual low, medium, and high pothole-severity labels.
+- Train and evaluate a three-class ResNet18 severity classifier.
 
-Python, PyTorch, Ultralytics YOLO, OpenCV, NumPy, pandas, ByteTrack, Streamlit, Git, and GitHub.
+See [Project Status](docs/PROJECT_STATUS.md) for the implementation roadmap and [Experiment Log](docs/EXPERIMENT_LOG.md) for the recorded results.
 
-## Project Status
+## Dataset
 
-Initial setup and repository configuration.
+The local dataset uses YOLO-format annotations and is configured in `configs/data.yaml`.
+
+| Split | Images | Bounding boxes |
+| --- | ---: | ---: |
+| Train | 25,677 | 64,294 |
+| Validation | 4,509 | 11,471 |
+| Total | 30,186 | 75,765 |
+
+Classes:
+
+| ID | Defect |
+| ---: | --- |
+| 0 | Longitudinal Crack (D00) |
+| 1 | Transverse Crack (D10) |
+| 2 | Alligator Crack (D20) |
+| 3 | Pothole (D40) |
+
+The dataset and generated model artifacts are intentionally excluded from Git because of their size.
+
+## Repository layout
+
+```text
+configs/
+  data.yaml                    YOLO dataset configuration
+docs/
+  PROJECT_STATUS.md            Current implementation and roadmap
+  EXPERIMENT_LOG.md            Dataset and model experiment results
+src/
+  detection/                   YOLO training, evaluation, and inspection
+  severity/                    Severity labelling, preparation, and training
+  tracking/                    Reserved for video tracking work
+  analytics/                   Reserved for reporting and analytics work
+data/                          Local images and labels; ignored by Git
+outputs/                       Training and evaluation artifacts; ignored by Git
+```
+
+## Python setup
+
+Python 3.12 is recommended for this project. A virtual environment has its own package set, so having Python 3.12 installed does not by itself install the packages listed in `requirements.txt`.
+
+```powershell
+py -3.12 -m venv venv312
+.\venv312\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+```
+
+If the Python launcher is unavailable, use the installed interpreter directly:
+
+```powershell
+& "$env:LOCALAPPDATA\Programs\Python\Python312\python.exe" -m venv venv312
+```
+
+## Main workflows
+
+Train the baseline detector:
+
+```powershell
+python src/detection/train_yolo11s.py
+```
+
+Evaluate detector thresholds and inspect the selected setting:
+
+```powershell
+python src/detection/evaluate_thresholds.py
+python src/detection/inspect_selected_thresholds.py
+```
+
+Build and train the severity classifier:
+
+```powershell
+python src/severity/collect_labels.py
+python src/severity/prepare_dataset.py
+python src/severity/train_classifier.py
+```
+
+Most detection scripts currently target NVIDIA GPU device `0`. The severity classifier automatically selects CUDA when available and otherwise uses the CPU.
+
+## Best recorded results
+
+- Detector: YOLO11s, 640 px, mAP50 `0.6470`, mAP50-95 `0.3422`.
+- Severity classifier: test accuracy `61.8%`, balanced accuracy `60.4%` on 68 held-out crops.
+
+These results are research baselines, not production acceptance metrics.
