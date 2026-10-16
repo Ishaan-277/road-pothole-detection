@@ -3,5 +3,9 @@ opencv-python
 numpy
 pandas
 matplotlib
+torch
+torchvision
+Pillow
+scikit-learn
 streamlit
 pytest
