@@ -21,16 +21,16 @@ The project currently provides an offline image-based road-defect detector and a
 | Fixed severity splits | Complete | Deterministic 202/40/68 train/validation/test examples with source-image isolation. |
 | ResNet18 severity baseline | Complete | Initial three-class model trained and evaluated. |
 | End-to-end image inference | Complete | One CLI processes an image or directory through detection and optional D40 severity classification. |
-| Video ingestion and processing | Not started | No video pipeline currently exists. |
-| Multi-frame tracking | Not started | `src/tracking` is reserved for this work. |
-| Unique-defect deduplication | Not started | Current duplicate handling is manual within labelled crops. |
+| Video ingestion and processing | Clip phase complete | Video frames are detected, annotated, and exported with track reports. |
+| Multi-frame tracking | Clip phase complete | ByteTrack associates defects inside one continuous clip. |
+| Unique-defect deduplication | Partial | Track IDs prevent adjacent-frame recounting; GPS/cross-journey deduplication is not implemented. |
 | Road-maintenance analytics | Not started | `src/analytics` is reserved for this work. |
 | Streamlit dashboard | Not started | Streamlit is installed but no application exists. |
-| Exportable inspection reports | Image phase complete | The image pipeline exports annotated images plus versioned CSV/JSON reports. PDF and route-level reports remain planned. |
+| Exportable inspection reports | Image/video phase complete | Both pipelines export annotated media plus versioned CSV/JSON reports. PDF and route-level reports remain planned. |
 | Shared pipeline configuration | Complete | Model paths, thresholds, image sizes, output settings, and device selection are centralized. |
 | Dataset integrity audit | Complete | Validates pairs, rows, ranges, classes, and duplicate annotations; optional cross-split hashing is available. |
 | Per-class detector evaluation | Complete | Exports aggregate and per-class CSV/JSON metrics. |
-| Automated tests | Image phase complete | Eleven tests cover configuration, dataset auditing, image discovery, cropping, path preservation, and report serialization. |
+| Automated tests | Video phase complete | Fifteen tests cover configuration, dataset auditing, image I/O, reports, severity splits, and track aggregation. |
 
 ## Current model choices
 
@@ -81,11 +81,20 @@ At the operational thresholds, D40 pothole performance on the current validation
 - Updated training to save the exact train, validation, and test manifests.
 - Data expansion and independent second-reviewer labels remain outstanding.
 
+### Phase 4 — Video tracking (clip-level complete, 2026-10-17)
+
+- Added video ingestion and annotated MP4 output.
+- Added ByteTrack association with persistent defect IDs inside a clip.
+- Added periodic severity sampling and probability aggregation per pothole track.
+- Added track-level CSV and schema-versioned JSON reports.
+- Verified on a native-resolution smoke clip: 10 frames, 3 tracks, 1 pothole track, high severity at 0.983 confidence.
+- Confirmed that downscaling the same source to 720p can suppress a low-confidence pothole, so resolution policy requires validation on real videos.
+
 ## Recommended next milestones
 
 1. Document dataset provenance and provide a reproducible dataset preparation/splitting script.
 2. Expand and independently review the severity dataset.
 3. Define severity acceptance metrics on a fixed holdout set.
-4. Add video inference and a tracker such as ByteTrack.
-5. Implement spatial and temporal deduplication for unique pothole counting.
+4. Validate video resolution, throughput, and track stability on real inspection footage.
+5. Implement GPS-backed spatial and cross-journey deduplication.
 6. Build analytics, reporting, and the Streamlit interface after the inference pipeline stabilizes.

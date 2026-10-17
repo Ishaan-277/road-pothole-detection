@@ -105,3 +105,18 @@ On 2026-10-17, the unified image pipeline was tested with both trained checkpoin
 - Outputs verified: annotated image, CSV report, and schema-versioned JSON report
 
 This is a functional smoke test, not an independent accuracy measurement.
+
+## Video pipeline smoke tests
+
+On 2026-10-17, ByteTrack video inference was tested with a short clip derived from the same known pothole image.
+
+Native-resolution test (`3650 × 2044`, 10 frames):
+
+- Tracks: 3
+- Unique pothole tracks: 1
+- Pothole track observations: 10
+- Aggregated severity: high
+- Severity confidence: 0.9830
+- Untracked detections: 0
+
+A separate 720p test tracked one crack but did not retain the pothole at confidence `0.20`. The original still-image pothole confidence was only approximately `0.225`, indicating that input resolution materially affects this edge case. Real-video validation should therefore compare native-resolution, tiled, and lower-resolution inference before selecting a production policy.

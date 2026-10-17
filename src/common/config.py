@@ -40,10 +40,18 @@ class OutputSettings:
 
 
 @dataclass(frozen=True)
+class VideoSettings:
+    tracker: str
+    severity_interval_frames: int
+    codec: str
+
+
+@dataclass(frozen=True)
 class PipelineSettings:
     detector: DetectorSettings
     severity: SeveritySettings
     output: OutputSettings
+    video: VideoSettings
     config_path: Path
     project_root: Path
 
@@ -77,6 +85,7 @@ def load_settings(
     detector = raw.get("detector", {})
     severity = raw.get("severity", {})
     output = raw.get("output", {})
+    video = raw.get("video", {})
 
     confidence = float(_require(detector, "confidence", "detector"))
     nms_iou = float(_require(detector, "nms_iou", "detector"))
@@ -115,6 +124,13 @@ def load_settings(
             save_images=bool(output.get("save_images", True)),
             save_csv=bool(output.get("save_csv", True)),
             save_json=bool(output.get("save_json", True)),
+        ),
+        video=VideoSettings(
+            tracker=str(video.get("tracker", "bytetrack.yaml")),
+            severity_interval_frames=max(
+                1, int(video.get("severity_interval_frames", 10))
+            ),
+            codec=str(video.get("codec", "mp4v")),
         ),
         config_path=path,
         project_root=root,

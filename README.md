@@ -80,6 +80,14 @@ python -m src.pipeline --input path\to\images --output outputs\inspection
 
 Useful overrides include `--recursive`, `--device cpu`, `--confidence 0.25`, `--iou 0.40`, and `--no-severity`. The pipeline writes annotated images, `detections.csv`, and a versioned `report.json` containing run configuration and image-level status.
 
+Run video detection, ByteTrack association, and track-level severity aggregation:
+
+```powershell
+python -m src.video --input path\to\inspection.mp4 --output outputs\video_inspection
+```
+
+The video workflow writes `annotated.mp4`, `tracks.csv`, and a versioned `report.json`. A track represents a unique defect within one continuous clip; it is not yet a cross-route physical-defect identity.
+
 Train the baseline detector:
 
 ```powershell

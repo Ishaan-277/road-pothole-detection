@@ -20,3 +20,8 @@ output:
   save_images: true
   save_csv: true
   save_json: true
+
+video:
+  tracker: bytetrack.yaml
+  severity_interval_frames: 10
+  codec: mp4v
