@@ -8,11 +8,11 @@ This document records the completed experiments represented by the local artifac
 
 | Split | Images | Boxes | D00 | D10 | D20 | D40 |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| Train | 25,677 | 64,294 | 27,114 | 16,358 | 9,941 | 10,881 |
-| Validation | 4,509 | 11,471 | 4,807 | 2,992 | 1,769 | 1,903 |
-| Total | 30,186 | 75,765 | 31,921 | 19,350 | 11,710 | 12,784 |
+| Train | 25,677 | 64,293 | 27,114 | 16,358 | 9,941 | 10,880 |
+| Validation | 4,509 | 11,470 | 4,807 | 2,992 | 1,769 | 1,902 |
+| Total | 30,186 | 75,763 | 31,921 | 19,350 | 11,710 | 12,782 |
 
-Dataset integrity checks found matching image/label counts, no empty label files, and no malformed YOLO rows in either split.
+Dataset integrity checks found matching image/label counts, no empty label files, and no malformed YOLO rows in either split. Two duplicate D40 annotation rows—one in each split—were found and removed locally on 2026-10-17. Dataset files are excluded from Git.
 
 ## Detector training
 
@@ -42,6 +42,15 @@ Selected operational inspection configuration:
 | 0.20 | 0.40 | 0.6941 | 0.6098 | 0.5615 | 0.2988 |
 
 On the 20-image NMS inspection sample, IoU `0.70` produced 43 boxes while IoU `0.50` and `0.40` each produced 38. On a separate 30-image inspection sample, the selected `0.20`/`0.40` configuration produced 69 detections, with two images receiving no detections.
+
+Per-class results at the selected operational thresholds:
+
+| Class | Precision | Recall | mAP50 | mAP50-95 |
+| --- | ---: | ---: | ---: | ---: |
+| D00 Longitudinal Crack | 0.6532 | 0.5690 | 0.5119 | 0.2812 |
+| D10 Transverse Crack | 0.6570 | 0.5646 | 0.5004 | 0.2538 |
+| D20 Alligator Crack | 0.7038 | 0.6476 | 0.6016 | 0.3256 |
+| D40 Pothole | 0.7624 | 0.6579 | 0.6322 | 0.3347 |
 
 ## Severity dataset
 

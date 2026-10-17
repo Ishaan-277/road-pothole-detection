@@ -21,9 +21,9 @@ The local dataset uses YOLO-format annotations and is configured in `configs/dat
 
 | Split | Images | Bounding boxes |
 | --- | ---: | ---: |
-| Train | 25,677 | 64,294 |
-| Validation | 4,509 | 11,471 |
-| Total | 30,186 | 75,765 |
+| Train | 25,677 | 64,293 |
+| Validation | 4,509 | 11,470 |
+| Total | 30,186 | 75,763 |
 
 Classes:
 
@@ -94,6 +94,23 @@ python src/severity/train_classifier.py
 ```
 
 Most detection scripts currently target NVIDIA GPU device `0`. The severity classifier automatically selects CUDA when available and otherwise uses the CPU.
+
+## Quality checks
+
+Run the fast unit-test suite and dataset-integrity audit:
+
+```powershell
+python -m pytest
+python -m src.evaluation.dataset_audit
+```
+
+Run the selected detector on the validation set and export aggregate and per-class metrics:
+
+```powershell
+python -m src.evaluation.evaluate_detector
+```
+
+Shared model paths, thresholds, image sizes, output settings, and device selection are defined in `configs/pipeline.yaml`.
 
 ## Best recorded results
 

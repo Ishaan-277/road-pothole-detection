@@ -7,5 +7,6 @@ torch
 torchvision
 Pillow
 scikit-learn
+PyYAML
 streamlit
 pytest

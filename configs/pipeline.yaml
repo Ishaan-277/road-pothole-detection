@@ -1,0 +1,22 @@
+detector:
+  model_path: outputs/training/yolo11s_640_baseline/weights/best.pt
+  data_yaml: configs/data.yaml
+  confidence: 0.20
+  nms_iou: 0.40
+  image_size: 640
+  device: auto
+
+severity:
+  enabled: true
+  model_path: outputs/severity_classifier/resnet18/best_severity_model.pth
+  image_size: 224
+  classes:
+    - low
+    - medium
+    - high
+
+output:
+  directory: outputs/inference
+  save_images: true
+  save_csv: true
+  save_json: true
