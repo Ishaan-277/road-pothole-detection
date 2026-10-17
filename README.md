@@ -96,9 +96,10 @@ python src/detection/inspect_selected_thresholds.py
 Build and train the severity classifier:
 
 ```powershell
-python src/severity/collect_labels.py
-python src/severity/prepare_dataset.py
-python src/severity/train_classifier.py
+python -m src.severity.collect_labels
+python -m src.severity.prepare_dataset
+python -m src.severity.prepare_splits
+python -m src.severity.train_classifier
 ```
 
 Most detection scripts currently target NVIDIA GPU device `0`. The severity classifier automatically selects CUDA when available and otherwise uses the CPU.

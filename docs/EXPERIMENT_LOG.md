@@ -66,6 +66,14 @@ The completed review batch contains 327 detections from 100 source images.
 
 The classifier split is grouped by source image so crops from one source image cannot appear in multiple train, validation, or test partitions.
 
+Fixed split manifest generated on 2026-10-17:
+
+| Split | Examples | Source images | Low | Medium | High |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Train | 202 | 64 | 68 | 101 | 33 |
+| Validation | 40 | 16 | 19 | 15 | 6 |
+| Test | 68 | 20 | 21 | 32 | 15 |
+
 ## Severity classifier
 
 Architecture: ImageNet-pretrained ResNet18 with a three-class output layer.

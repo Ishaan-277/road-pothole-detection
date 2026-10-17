@@ -13,7 +13,6 @@ from torch.utils.data import Dataset, DataLoader
 from torchvision import models, transforms
 from PIL import Image
 
-from sklearn.model_selection import GroupShuffleSplit
 from sklearn.metrics import (
     classification_report,
     confusion_matrix,
@@ -22,12 +21,18 @@ from sklearn.metrics import (
     balanced_accuracy_score,
 )
 
+from src.severity.dataset import (
+    CLASSES,
+    create_grouped_splits,
+    load_clean_dataset,
+    save_splits,
+)
+
 ROOT = Path(__file__).resolve().parents[2]
 CSV_PATH = ROOT / "outputs" / "severity_classifier" / "severity_dataset.csv"
 OUTPUT_DIR = ROOT / "outputs" / "severity_classifier" / "resnet18"
 MODEL_PATH = OUTPUT_DIR / "best_severity_model.pth"
 
-CLASSES = ["low", "medium", "high"]
 LABEL_TO_ID = {name: idx for idx, name in enumerate(CLASSES)}
 
 SEED = 42
@@ -75,55 +80,20 @@ def main():
     if not CSV_PATH.exists():
         raise FileNotFoundError(f"Dataset CSV not found: {CSV_PATH}")
 
-    df = pd.read_csv(CSV_PATH)
-    df["manual_label"] = df["manual_label"].str.lower().str.strip()
-    df = df[df["manual_label"].isin(CLASSES)].copy()
-
-    missing = [
-        path for path in df["crop_path"]
-        if not (ROOT / path).is_file()
-    ]
-    if missing:
-        raise FileNotFoundError(
-            f"{len(missing)} crop images are missing. "
-            f"First missing path: {missing[0]}"
-        )
-
-    # Keep every detection from a source image in the same split.
-    splitter = GroupShuffleSplit(
-        n_splits=1,
+    df = load_clean_dataset(CSV_PATH, ROOT)
+    train_df, val_df, test_df = create_grouped_splits(
+        df,
+        seed=SEED,
         test_size=TEST_SIZE,
-        random_state=SEED,
+        validation_size_within_train=0.20,
     )
-    train_idx, test_idx = next(
-        splitter.split(df, df["manual_label"], groups=df["image_name"])
+    save_splits(
+        ROOT / "outputs" / "severity_classifier" / "splits",
+        train_df,
+        val_df,
+        test_df,
+        seed=SEED,
     )
-
-    train_df = df.iloc[train_idx].copy()
-    test_df = df.iloc[test_idx].copy()
-
-    assert set(train_df["image_name"]).isdisjoint(set(test_df["image_name"]))
-
-    # Create a validation split from training images, also grouped by image.
-    val_splitter = GroupShuffleSplit(
-        n_splits=1,
-        test_size=0.20,
-        random_state=SEED + 1,
-    )
-    train_sub_idx, val_idx = next(
-        val_splitter.split(
-            train_df,
-            train_df["manual_label"],
-            groups=train_df["image_name"],
-        )
-    )
-
-    val_df = train_df.iloc[val_idx].copy()
-    train_df = train_df.iloc[train_sub_idx].copy()
-
-    assert set(train_df["image_name"]).isdisjoint(set(val_df["image_name"]))
-    assert set(val_df["image_name"]).isdisjoint(set(test_df["image_name"]))
-    assert set(train_df["image_name"]).isdisjoint(set(test_df["image_name"]))
 
     print(f"Device: {DEVICE}")
     print(f"Total examples: {len(df)}")

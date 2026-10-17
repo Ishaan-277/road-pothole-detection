@@ -18,6 +18,7 @@ The project currently provides an offline image-based road-defect detector and a
 | Annotation review tooling | Complete | Ground-truth and prediction comparisons generated for sample images. |
 | Manual severity labelling | Complete for initial batch | 327 detections reviewed from 100 images. |
 | Severity dataset preparation | Complete | 310 usable examples after removing 17 duplicates. |
+| Fixed severity splits | Complete | Deterministic 202/40/68 train/validation/test examples with source-image isolation. |
 | ResNet18 severity baseline | Complete | Initial three-class model trained and evaluated. |
 | End-to-end image inference | Complete | One CLI processes an image or directory through detection and optional D40 severity classification. |
 | Video ingestion and processing | Not started | No video pipeline currently exists. |
@@ -71,6 +72,14 @@ At the operational thresholds, D40 pothole performance on the current validation
 - Resolution-aware annotated image output.
 - CSV and schema-versioned JSON reports with model paths and thresholds.
 - Verified against a real validation image and both trained checkpoints.
+
+### Phase 3 — Severity quality (in progress, 2026-10-17)
+
+- Added a written low/medium/high labelling standard and review-quality process.
+- Added explicit `uncertain`, `duplicate`, and `not_pothole` review outcomes.
+- Added reusable severity-dataset validation and deterministic group-isolated splits.
+- Updated training to save the exact train, validation, and test manifests.
+- Data expansion and independent second-reviewer labels remain outstanding.
 
 ## Recommended next milestones
 

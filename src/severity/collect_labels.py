@@ -46,6 +46,7 @@ LABELS = {
     ord("3"): ("high", 3),
     ord("4"): ("duplicate", ""),
     ord("5"): ("uncertain", ""),
+    ord("6"): ("not_pothole", ""),
 }
 
 
@@ -199,7 +200,10 @@ def main():
     print(f"\nFound {selected_images} images with pothole detections.")
     print(f"Total individual detections to review: {len(review_items)}")
     print("\nStarting keyboard labelling...")
-    print("1=Low | 2=Medium | 3=High | 4=Duplicate | 5=Uncertain")
+    print(
+        "1=Low | 2=Medium | 3=High | 4=Duplicate | "
+        "5=Uncertain | 6=Not pothole"
+    )
     print("N=Skip | Q=Quit and save")
 
     window_name = "Pothole Severity Labelling"
@@ -224,7 +228,7 @@ def main():
                 f"Image: {item['image_name']}",
                 f"Model confidence: {item['confidence']:.2f}",
                 "1 Low | 2 Medium | 3 High",
-                "4 Duplicate | 5 Uncertain",
+                "4 Duplicate | 5 Uncertain | 6 Not pothole",
                 "N Skip | Q Quit and save",
             ]
 
