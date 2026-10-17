@@ -20,7 +20,9 @@ def build_parser() -> argparse.ArgumentParser:
         default=PROJECT_ROOT / "configs" / "pipeline.yaml",
     )
     parser.add_argument("--device", help="Device override: auto, cpu, or GPU index")
-    parser.add_argument("--confidence", type=float, help="Detection threshold override")
+    parser.add_argument(
+        "--confidence", type=float, help="Global confidence override for every class"
+    )
     parser.add_argument("--iou", type=float, help="NMS IoU threshold override")
     parser.add_argument("--recursive", action="store_true")
     parser.add_argument("--no-severity", action="store_true")
@@ -37,7 +39,12 @@ def main() -> None:
     if args.confidence is not None:
         if not 0.0 <= args.confidence <= 1.0:
             raise ValueError("--confidence must be between 0 and 1")
-        detector = replace(detector, confidence=args.confidence)
+        detector = replace(
+            detector,
+            confidence=args.confidence,
+            candidate_confidence=args.confidence,
+            class_confidence={},
+        )
     if args.iou is not None:
         if not 0.0 <= args.iou <= 1.0:
             raise ValueError("--iou must be between 0 and 1")

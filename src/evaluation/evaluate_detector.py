@@ -62,6 +62,15 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--data", type=Path, help="Override dataset YAML")
     parser.add_argument("--device", help="Override device, for example 0 or cpu")
     parser.add_argument("--batch", type=int, default=8)
+    parser.add_argument("--image-size", type=int, help="Override validation image size")
+    parser.add_argument("--confidence", type=float, help="Override candidate confidence")
+    parser.add_argument("--iou", type=float, help="Override NMS IoU threshold")
+    parser.add_argument(
+        "--agnostic-nms",
+        action=argparse.BooleanOptionalAction,
+        default=None,
+        help="Suppress overlapping boxes even when their predicted classes differ",
+    )
     parser.add_argument(
         "--output",
         type=Path,
@@ -77,6 +86,18 @@ def main() -> None:
     model_path = (args.model or settings.detector.model_path).resolve()
     data_yaml = (args.data or settings.detector.data_yaml).resolve()
     device = resolve_device(args.device or settings.detector.device)
+    image_size = args.image_size or settings.detector.image_size
+    confidence = (
+        settings.detector.candidate_confidence
+        if args.confidence is None
+        else args.confidence
+    )
+    nms_iou = settings.detector.nms_iou if args.iou is None else args.iou
+    agnostic_nms = (
+        settings.detector.agnostic_nms
+        if args.agnostic_nms is None
+        else args.agnostic_nms
+    )
 
     if not model_path.is_file():
         raise FileNotFoundError(f"Detector checkpoint not found: {model_path}")
@@ -88,11 +109,12 @@ def main() -> None:
     metrics = model.val(
         data=str(data_yaml),
         split="val",
-        imgsz=settings.detector.image_size,
+        imgsz=image_size,
         batch=args.batch,
         device=device,
-        conf=settings.detector.confidence,
-        iou=settings.detector.nms_iou,
+        conf=confidence,
+        iou=nms_iou,
+        agnostic_nms=agnostic_nms,
         plots=args.plots,
         project=str(args.output),
         name="ultralytics",
@@ -104,9 +126,10 @@ def main() -> None:
         {
             "model_path": str(model_path),
             "data_yaml": str(data_yaml),
-            "image_size": settings.detector.image_size,
-            "confidence": settings.detector.confidence,
-            "nms_iou": settings.detector.nms_iou,
+            "image_size": image_size,
+            "confidence": confidence,
+            "nms_iou": nms_iou,
+            "agnostic_nms": agnostic_nms,
             "device": str(device),
         }
     )

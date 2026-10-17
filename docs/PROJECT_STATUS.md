@@ -1,10 +1,10 @@
 # Project Status
 
-Last updated: 2026-10-16
+Last updated: 2026-10-17
 
 ## Summary
 
-The project currently provides an offline image-based road-defect detector and a prototype pothole-severity classifier. The strongest completed component is the YOLO11s detector. Severity classification is functional but data-limited. Video processing, tracking, unique-defect counting, analytics, and a user-facing dashboard have not yet been implemented.
+The project provides offline image and video road-defect inference, clip-level tracking, and prototype pothole-severity classification. The YOLO11s detector now uses a recall-oriented candidate threshold, class-specific final thresholds, and class-agnostic duplicate suppression. Severity classification remains data-limited; GPS-backed cross-journey identity, analytics, and a user-facing dashboard have not yet been implemented.
 
 ## Component status
 
@@ -30,7 +30,9 @@ The project currently provides an offline image-based road-defect detector and a
 | Shared pipeline configuration | Complete | Model paths, thresholds, image sizes, output settings, and device selection are centralized. |
 | Dataset integrity audit | Complete | Validates pairs, rows, ranges, classes, and duplicate annotations; optional cross-split hashing is available. |
 | Per-class detector evaluation | Complete | Exports aggregate and per-class CSV/JSON metrics. |
-| Automated tests | Video phase complete | Fifteen tests cover configuration, dataset auditing, image I/O, reports, severity splits, and track aggregation. |
+| Duplicate-box suppression | Complete for single frames | Class-agnostic NMS plus IoU/containment filtering is shared by image and video output. |
+| Missed-pothole mitigation | Initial pass complete | Candidates start at 0.05 and D40 is retained from 0.10; real-route acceptance testing remains required. |
+| Automated tests | Inference-quality phase complete | Nineteen tests cover configuration, dataset auditing, post-processing, image I/O, reports, severity splits, and track aggregation. |
 
 ## Current model choices
 
@@ -38,21 +40,24 @@ The downstream detection and severity-labelling scripts use:
 
 - Checkpoint: `outputs/training/yolo11s_640_baseline/weights/best.pt`
 - Input size: 640 px
-- Operational confidence threshold: 0.20
-- Operational NMS IoU threshold: 0.40
+- Candidate confidence threshold: 0.05
+- Final confidence threshold: 0.20 for cracks and 0.10 for D40 potholes
+- Candidate NMS IoU threshold: 0.70
+- Class-agnostic NMS: enabled
+- Secondary duplicate rules: IoU 0.45 or intersection-over-smaller-box 0.80
 
-The threshold sweep achieved its highest mAP50-95 at confidence `0.05` and IoU `0.70`. The stricter operational setting was subsequently used to reduce low-confidence and overlapping detections. This tradeoff should be validated against a task-specific acceptance set before deployment.
+The selected candidate-generation setting (`0.05`, IoU `0.70`, class-agnostic NMS) measured aggregate mAP50-95 `0.3304`, compared with `0.2988` for the previous operational `0.20`/`0.40` setting. D40 mAP50-95 improved from `0.3347` to `0.3638`. The checkpoint's standard training-time validation score remains mAP50-95 `0.3422`; post-processing improves operational behavior but does not replace retraining.
 
-At the operational thresholds, D40 pothole performance on the current validation set is precision `0.7624`, recall `0.6579`, mAP50 `0.6322`, and mAP50-95 `0.3347`.
+A 960 px validation run was rejected: aggregate mAP50-95 fell to `0.2636` because this checkpoint was trained at 640 px. The inference size therefore remains 640 rather than assuming that a larger input is automatically better.
 
 ## Known limitations
 
 - The dataset source, licence information, transformation history, and split-generation procedure are not yet documented.
 - The detector configuration contains a machine-specific local data path.
-- Most detection scripts explicitly select GPU device `0`.
+- Legacy standalone training scripts explicitly select GPU device `0`; the image, video, audit, and evaluation CLIs support automatic CPU/GPU selection.
 - The severity dataset has only 310 usable crops and is class-imbalanced.
 - Severity labels reflect visual judgement and have no recorded multi-reviewer agreement process.
-- The severity model is saved as a state dictionary, but no production inference loader exists.
+- Severity predictions are visual estimates and should not yet drive maintenance decisions without human review.
 - Model artifacts and datasets are local-only and cannot be reconstructed from the repository.
 - Dependency versions are not yet locked to exact releases.
 
@@ -90,11 +95,23 @@ At the operational thresholds, D40 pothole performance on the current validation
 - Verified on a native-resolution smoke clip: 10 frames, 3 tracks, 1 pothole track, high severity at 0.983 confidence.
 - Confirmed that downscaling the same source to 720p can suppress a low-confidence pothole, so resolution policy requires validation on real videos.
 
+### Phase 5 — Detection quality and duplicate control (initial pass complete, 2026-10-17)
+
+- Added configurable candidate and per-class final confidence thresholds.
+- Lowered only the D40 final threshold to recover borderline potholes without lowering crack thresholds.
+- Enabled class-agnostic NMS to suppress boxes that describe the same damage with different predicted classes.
+- Added a second class-agnostic IoU/containment filter shared by still-image and tracked-video output.
+- Replaced raw Ultralytics annotations with consolidated labels drawn only for retained detections.
+- Added evaluator overrides and full-validation comparisons at 640 and 960 px.
+- Corrected the low-learning-rate fine-tuning recipe by pinning AdamW; the earlier `optimizer=auto` run did not honor the intended effective learning rate.
+- Verified the difficult Norway sample: all three labelled pothole regions were recovered, with one additional low-confidence D40 candidate requiring acceptance-set review.
+- Re-verified native-resolution video: 10 frames, 3 stable tracks, 1 pothole track, and no untracked observations.
+
 ## Recommended next milestones
 
-1. Document dataset provenance and provide a reproducible dataset preparation/splitting script.
-2. Expand and independently review the severity dataset.
-3. Define severity acceptance metrics on a fixed holdout set.
-4. Validate video resolution, throughput, and track stability on real inspection footage.
-5. Implement GPS-backed spatial and cross-journey deduplication.
-6. Build analytics, reporting, and the Streamlit interface after the inference pipeline stabilizes.
+1. Build a fixed, manually reviewed detection acceptance set containing misses, duplicates, small potholes, shadows, patches, and puddles.
+2. Run the corrected AdamW fine-tune and promote its checkpoint only if it beats `0.3422` mAP50-95 and improves D40 recall on the acceptance set.
+3. Document dataset provenance and provide a reproducible dataset preparation/splitting script.
+4. Expand and independently review the severity dataset, then define severity acceptance metrics.
+5. Validate resolution, throughput, and track stability on real inspection footage.
+6. Implement GPS-backed cross-journey deduplication, analytics, reporting, and the Streamlit interface.

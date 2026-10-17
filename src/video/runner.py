@@ -12,7 +12,8 @@ import cv2
 from ultralytics import YOLO
 
 from src.common.config import PipelineSettings, resolve_device
-from src.pipeline.io import draw_severity_label, padded_crop
+from src.detection.postprocess import Detection, filter_detections
+from src.pipeline.io import draw_detection_label, padded_crop
 from src.pipeline.models import SeverityPredictor
 from src.video.tracks import TrackSummary
 
@@ -93,6 +94,7 @@ def run_video(
     )
     tracks: dict[int, TrackSummary] = {}
     untracked_detections = 0
+    suppressed_or_filtered = 0
     processed_frames = 0
     started_at = datetime.now(timezone.utc)
 
@@ -109,27 +111,49 @@ def run_video(
                 persist=True,
                 tracker=settings.video.tracker,
                 imgsz=settings.detector.image_size,
-                conf=settings.detector.confidence,
+                conf=settings.detector.candidate_confidence,
                 iou=settings.detector.nms_iou,
+                agnostic_nms=settings.detector.agnostic_nms,
                 device=device,
                 save=False,
                 verbose=False,
             )[0]
-            annotated = result.plot()
+            annotated = frame.copy()
             boxes = result.boxes
 
             if boxes is not None and len(boxes):
                 ids = boxes.id.int().cpu().tolist() if boxes.id is not None else []
+                raw_detections: list[Detection] = []
                 for box_index, box in enumerate(boxes):
                     if box_index >= len(ids):
                         untracked_detections += 1
                         continue
-                    track_id = int(ids[box_index])
-                    class_id = int(box.cls.item())
-                    confidence = float(box.conf.item())
-                    coordinates = tuple(
-                        int(round(value)) for value in box.xyxy[0].tolist()
+                    raw_detections.append(
+                        Detection(
+                            track_id=int(ids[box_index]),
+                            class_id=int(box.cls.item()),
+                            confidence=float(box.conf.item()),
+                            xyxy=tuple(
+                                int(round(value)) for value in box.xyxy[0].tolist()
+                            ),
+                        )
                     )
+                detections = filter_detections(
+                    raw_detections,
+                    default_confidence=settings.detector.confidence,
+                    class_confidence=settings.detector.class_confidence,
+                    duplicate_iou=settings.detector.duplicate_iou,
+                    duplicate_ios=settings.detector.duplicate_ios,
+                )
+                suppressed_or_filtered += len(raw_detections) - len(detections)
+                for detection in detections:
+                    track_id = detection.track_id
+                    if track_id is None:
+                        untracked_detections += 1
+                        continue
+                    class_id = detection.class_id
+                    confidence = detection.confidence
+                    coordinates = detection.xyxy
                     summary = tracks.get(track_id)
                     if summary is None:
                         summary = TrackSummary(
@@ -155,13 +179,18 @@ def run_video(
                             summary.update_severity(frame_index, probabilities)
 
                     severity_label, severity_confidence = summary.severity()
-                    if severity_label:
-                        draw_severity_label(
-                            annotated,
-                            coordinates,
-                            severity_label,
-                            severity_confidence,
-                        )
+                    draw_detection_label(
+                        annotated,
+                        coordinates,
+                        class_id,
+                        _class_name(detector.names, class_id),
+                        confidence,
+                        track_id=track_id,
+                        severity=severity_label,
+                        severity_confidence=(
+                            severity_confidence if severity_label else None
+                        ),
+                    )
 
             writer.write(annotated)
             if processed_frames % 100 == 0:
@@ -183,7 +212,7 @@ def run_video(
         writer_csv.writerows(track_rows)
 
     report = {
-        "schema_version": 1,
+        "schema_version": 2,
         "run": {
             "started_at": started_at.isoformat(),
             "completed_at": datetime.now(timezone.utc).isoformat(),
@@ -197,6 +226,7 @@ def run_video(
                 row["class_id"] == POTHOLE_CLASS_ID for row in track_rows
             ),
             "untracked_detections": untracked_detections,
+            "suppressed_or_filtered_observations": suppressed_or_filtered,
         },
         "configuration": {
             "detector_model": str(settings.detector.model_path),
@@ -206,7 +236,12 @@ def run_video(
             "tracker": settings.video.tracker,
             "severity_interval_frames": settings.video.severity_interval_frames,
             "confidence": settings.detector.confidence,
+            "candidate_confidence": settings.detector.candidate_confidence,
+            "class_confidence": settings.detector.class_confidence,
             "nms_iou": settings.detector.nms_iou,
+            "agnostic_nms": settings.detector.agnostic_nms,
+            "duplicate_iou": settings.detector.duplicate_iou,
+            "duplicate_ios": settings.detector.duplicate_ios,
         },
         "tracks": track_rows,
     }

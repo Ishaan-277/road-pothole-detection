@@ -10,9 +10,10 @@ import cv2
 from ultralytics import YOLO
 
 from src.common.config import PipelineSettings, resolve_device
+from src.detection.postprocess import Detection, filter_detections
 from src.pipeline.io import (
     discover_images,
-    draw_severity_label,
+    draw_detection_label,
     output_image_path,
     padded_crop,
     write_reports,
@@ -75,21 +76,36 @@ def run_pipeline(
         result = detector.predict(
             source=image,
             imgsz=settings.detector.image_size,
-            conf=settings.detector.confidence,
+            conf=settings.detector.candidate_confidence,
             iou=settings.detector.nms_iou,
+            agnostic_nms=settings.detector.agnostic_nms,
             device=device,
             save=False,
             verbose=False,
         )[0]
-        annotated = result.plot()
+        annotated = image.copy()
         boxes = result.boxes
-        detection_count = len(boxes) if boxes is not None else 0
+        raw_detections = [
+            Detection(
+                class_id=int(box.cls.item()),
+                confidence=float(box.conf.item()),
+                xyxy=tuple(int(round(value)) for value in box.xyxy[0].tolist()),
+            )
+            for box in (boxes if boxes is not None else [])
+        ]
+        detections = filter_detections(
+            raw_detections,
+            default_confidence=settings.detector.confidence,
+            class_confidence=settings.detector.class_confidence,
+            duplicate_iou=settings.detector.duplicate_iou,
+            duplicate_ios=settings.detector.duplicate_ios,
+        )
+        detection_count = len(detections)
 
-        iterable_boxes = boxes if boxes is not None else []
-        for box_index, box in enumerate(iterable_boxes, start=1):
-            class_id = int(box.cls.item())
-            confidence = float(box.conf.item())
-            coordinates = tuple(int(round(value)) for value in box.xyxy[0].tolist())
+        for box_index, detection in enumerate(detections, start=1):
+            class_id = detection.class_id
+            confidence = detection.confidence
+            coordinates = detection.xyxy
             x1, y1, x2, y2 = coordinates
             detection_id = f"I{image_index:05d}-D{box_index:03d}"
             severity_label = ""
@@ -104,12 +120,17 @@ def run_pipeline(
                         severity_confidence,
                         severity_probabilities,
                     ) = severity.predict(crop)
-                    draw_severity_label(
-                        annotated,
-                        coordinates,
-                        severity_label,
-                        float(severity_confidence),
-                    )
+            draw_detection_label(
+                annotated,
+                coordinates,
+                class_id,
+                _model_name(detector.names, class_id),
+                confidence,
+                severity=severity_label,
+                severity_confidence=(
+                    float(severity_confidence) if severity_confidence != "" else None
+                ),
+            )
 
             row = {
                 "image": str(image_path),
@@ -143,6 +164,8 @@ def run_pipeline(
                 "image": str(image_path),
                 "status": "processed",
                 "detections": detection_count,
+                "raw_candidates": len(raw_detections),
+                "suppressed_or_filtered": len(raw_detections) - detection_count,
                 "annotated_image": str(image_output) if image_output else None,
             }
         )
@@ -150,7 +173,7 @@ def run_pipeline(
 
     completed_at = datetime.now(timezone.utc)
     report = {
-        "schema_version": 1,
+        "schema_version": 2,
         "run": {
             "started_at": started_at.isoformat(),
             "completed_at": completed_at.isoformat(),
@@ -170,7 +193,12 @@ def run_pipeline(
             "device": str(device),
             "image_size": settings.detector.image_size,
             "confidence": settings.detector.confidence,
+            "candidate_confidence": settings.detector.candidate_confidence,
+            "class_confidence": settings.detector.class_confidence,
             "nms_iou": settings.detector.nms_iou,
+            "agnostic_nms": settings.detector.agnostic_nms,
+            "duplicate_iou": settings.detector.duplicate_iou,
+            "duplicate_ios": settings.detector.duplicate_ios,
         },
         "images": image_summaries,
         "detections": rows,

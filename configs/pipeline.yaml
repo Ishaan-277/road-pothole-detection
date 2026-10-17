@@ -2,7 +2,13 @@ detector:
   model_path: outputs/training/yolo11s_640_baseline/weights/best.pt
   data_yaml: configs/data.yaml
   confidence: 0.20
-  nms_iou: 0.40
+  candidate_confidence: 0.05
+  class_confidence:
+    3: 0.10
+  nms_iou: 0.70
+  agnostic_nms: true
+  duplicate_iou: 0.45
+  duplicate_ios: 0.80
   image_size: 640
   device: auto
 

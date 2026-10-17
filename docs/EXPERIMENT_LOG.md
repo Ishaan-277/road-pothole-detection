@@ -1,6 +1,6 @@
 # Experiment Log
 
-Last updated: 2026-10-16
+Last updated: 2026-10-17
 
 This document records the completed experiments represented by the local artifacts under `outputs/`. Generated weights, plots, crops, and reports are excluded from Git.
 
@@ -24,6 +24,8 @@ Dataset integrity checks found matching image/label counts, no empty label files
 | YOLO11s fine-tune, 800 px | 11 | 1 | 0.6556 | 0.5619 | 0.6109 | 0.3078 | No improvement; early-stopped |
 
 The YOLO11s 640 px baseline remains the selected detector.
+
+The nominal low-LR fine-tune was later found to have used `optimizer=auto`; Ultralytics selected a substantially larger effective learning rate despite the requested `lr0=0.0001`. Its negative result is valid for the recorded run but does not test a pinned low-LR AdamW recipe. The corrected script now explicitly selects AdamW, disables warm-up, and writes to a new run directory.
 
 ## Threshold evaluation
 
@@ -51,6 +53,21 @@ Per-class results at the selected operational thresholds:
 | D10 Transverse Crack | 0.6570 | 0.5646 | 0.5004 | 0.2538 |
 | D20 Alligator Crack | 0.7038 | 0.6476 | 0.6016 | 0.3256 |
 | D40 Pothole | 0.7624 | 0.6579 | 0.6322 | 0.3347 |
+
+### Inference-quality comparison, 2026-10-17
+
+Full-set validation was repeated with class-agnostic NMS. These runs evaluate candidate generation before the final class-specific reporting filter.
+
+| Image size | Candidate confidence | NMS IoU | Agnostic | Precision | Recall | mAP50 | mAP50-95 | D40 mAP50-95 |
+| ---: | ---: | ---: | :---: | ---: | ---: | ---: | ---: | ---: |
+| 640 | 0.10 | 0.40 | Yes | 0.7024 | 0.6036 | 0.5992 | 0.3124 | 0.3470 |
+| 640 | 0.05 | 0.40 | Yes | 0.7024 | 0.6036 | 0.6184 | 0.3192 | 0.3540 |
+| 640 | 0.05 | 0.70 | Yes | 0.7007 | 0.5803 | 0.6228 | 0.3304 | 0.3638 |
+| 960 | 0.10 | 0.40 | Yes | 0.6506 | 0.5892 | 0.5613 | 0.2636 | 0.3260 |
+
+The 640 px / 0.05 / 0.70 candidate setting was selected. Candidate NMS is deliberately permissive for mAP and recall; final output is deduplicated at stricter overlap thresholds. The 960 px test was rejected because it reduced every aggregate metric while more than doubling inference time (approximately 4.3 ms to 10.2 ms per image on the test GPU).
+
+Final operational filtering keeps D00/D10/D20 at confidence `0.20`, lowers only D40 to `0.10`, and removes cross-class duplicates at IoU `0.45` or intersection-over-smaller-box `0.80`. On the known difficult Norway image, 32 permissive raw candidates were reduced to 8 reported detections. The result recovered the three labelled D40 regions and also retained one extra D40 candidate at confidence `0.128`; this illustrates the intended recall/precision tradeoff and the need for a reviewed acceptance set.
 
 ## Severity dataset
 
@@ -105,6 +122,8 @@ On 2026-10-17, the unified image pipeline was tested with both trained checkpoin
 - Outputs verified: annotated image, CSV report, and schema-versioned JSON report
 
 This is a functional smoke test, not an independent accuracy measurement.
+
+The smoke test was repeated after the inference-quality changes. It produced 32 raw candidates, 8 final detections, and 4 D40 candidates. All three ground-truth pothole regions were represented; one additional low-confidence D40 candidate remained. Annotation output now contains only post-processed boxes with consolidated detection and severity labels.
 
 ## Video pipeline smoke tests
 

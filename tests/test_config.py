@@ -38,6 +38,9 @@ def test_load_settings_resolves_project_relative_paths(tmp_path: Path) -> None:
 
     assert settings.detector.model_path == tmp_path / "models" / "detector.pt"
     assert settings.detector.data_yaml == tmp_path / "configs" / "data.yaml"
+    assert settings.detector.candidate_confidence == 0.2
+    assert settings.detector.confidence_for(3) == 0.2
+    assert not settings.detector.agnostic_nms
     assert settings.severity.classes == ("low", "medium", "high")
     assert settings.output.directory == tmp_path / "outputs" / "test"
 
@@ -48,3 +51,27 @@ def test_load_settings_rejects_invalid_confidence(tmp_path: Path) -> None:
 
     with pytest.raises(ValueError, match="confidence"):
         load_settings(config, project_root=tmp_path)
+
+
+def test_load_settings_reads_class_specific_postprocessing(tmp_path: Path) -> None:
+    config = tmp_path / "pipeline.yaml"
+    write_config(config)
+    contents = config.read_text(encoding="utf-8").replace(
+        "  nms_iou: 0.4",
+        """  candidate_confidence: 0.05
+  class_confidence:
+    3: 0.1
+  nms_iou: 0.4
+  agnostic_nms: true
+  duplicate_iou: 0.45
+  duplicate_ios: 0.8""",
+    )
+    config.write_text(contents, encoding="utf-8")
+
+    settings = load_settings(config, project_root=tmp_path)
+
+    assert settings.detector.candidate_confidence == 0.05
+    assert settings.detector.confidence_for(0) == 0.2
+    assert settings.detector.confidence_for(3) == 0.1
+    assert settings.detector.agnostic_nms
+    assert settings.detector.duplicate_ios == 0.8

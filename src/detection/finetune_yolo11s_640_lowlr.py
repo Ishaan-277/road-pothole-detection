@@ -1,5 +1,13 @@
+"""Conservative AdamW fine-tuning from the strongest 640 px checkpoint.
+
+The previous experiment requested a low learning rate while leaving the optimizer
+on ``auto``. Ultralytics selected a much larger effective rate, so that run did
+not test the intended hypothesis. This recipe pins the optimizer and disables
+warm-up to avoid that failure mode.
+"""
 
 from pathlib import Path
+
 from ultralytics import YOLO
 
 # Project paths
@@ -19,14 +27,14 @@ MODEL_PATH = (
 OUTPUT_DIR = ROOT / "outputs" / "training"
 
 # Training configuration
-EPOCHS = 30
+EPOCHS = 15
 IMAGE_SIZE = 640
 BATCH_SIZE = 12
 DEVICE = 0
 
 # Lower learning rate for fine-tuning
 LEARNING_RATE = 0.0001
-INITIAL_LR_FACTOR = 0.01
+FINAL_LR_FACTOR = 0.10
 
 def main():
     if not DATA_YAML.exists():
@@ -40,7 +48,7 @@ def main():
         )
 
     print("=" * 55)
-    print("YOLO11s 640px - Low Learning Rate Fine-tuning")
+    print("YOLO11s 640px - AdamW Fine-tuning")
     print("=" * 55)
     print(f"Starting weights: {MODEL_PATH}")
     print(f"Image size: {IMAGE_SIZE}")
@@ -57,29 +65,31 @@ def main():
         batch=BATCH_SIZE,
         device=DEVICE,
 
-        # Fine-tuning settings
+        # Pin the optimizer: optimizer="auto" ignores a user-provided lr0.
+        optimizer="AdamW",
         lr0=LEARNING_RATE,
-        lrf=INITIAL_LR_FACTOR,
-        warmup_epochs=3,
+        lrf=FINAL_LR_FACTOR,
+        cos_lr=True,
+        warmup_epochs=0,
         weight_decay=0.0005,
 
         # Reproducibility and checkpoint safety
         seed=42,
         deterministic=True,
-        patience=12,
+        patience=5,
         save=True,
         plots=True,
 
         # New output directory; preserve the baseline
         project=str(OUTPUT_DIR),
-        name="yolo11s_640_lowlr",
+        name="yolo11s_640_adamw_finetune",
         exist_ok=False,
     )
 
     print("\nTraining finished.")
     print(
         "Results directory:",
-        OUTPUT_DIR / "yolo11s_640_lowlr"
+        OUTPUT_DIR / "yolo11s_640_adamw_finetune"
     )
 
 

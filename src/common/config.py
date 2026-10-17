@@ -18,9 +18,18 @@ class DetectorSettings:
     model_path: Path
     data_yaml: Path
     confidence: float
+    candidate_confidence: float
+    class_confidence: dict[int, float]
     nms_iou: float
+    agnostic_nms: bool
+    duplicate_iou: float
+    duplicate_ios: float
     image_size: int
     device: str
+
+    def confidence_for(self, class_id: int) -> float:
+        """Return the final reporting threshold for a detector class."""
+        return self.class_confidence.get(class_id, self.confidence)
 
 
 @dataclass(frozen=True)
@@ -88,11 +97,33 @@ def load_settings(
     video = raw.get("video", {})
 
     confidence = float(_require(detector, "confidence", "detector"))
+    candidate_confidence = float(detector.get("candidate_confidence", confidence))
     nms_iou = float(_require(detector, "nms_iou", "detector"))
+    duplicate_iou = float(detector.get("duplicate_iou", nms_iou))
+    duplicate_ios = float(detector.get("duplicate_ios", 1.0))
     if not 0.0 <= confidence <= 1.0:
         raise ValueError("detector.confidence must be between 0 and 1")
     if not 0.0 <= nms_iou <= 1.0:
         raise ValueError("detector.nms_iou must be between 0 and 1")
+    for name, value in {
+        "candidate_confidence": candidate_confidence,
+        "duplicate_iou": duplicate_iou,
+        "duplicate_ios": duplicate_ios,
+    }.items():
+        if not 0.0 <= value <= 1.0:
+            raise ValueError(f"detector.{name} must be between 0 and 1")
+
+    class_confidence = {
+        int(class_id): float(value)
+        for class_id, value in detector.get("class_confidence", {}).items()
+    }
+    if any(not 0.0 <= value <= 1.0 for value in class_confidence.values()):
+        raise ValueError("detector.class_confidence values must be between 0 and 1")
+    final_thresholds = [confidence, *class_confidence.values()]
+    if candidate_confidence > min(final_thresholds):
+        raise ValueError(
+            "detector.candidate_confidence must not exceed a final confidence threshold"
+        )
 
     classes = tuple(str(item) for item in severity.get("classes", []))
     if not classes:
@@ -107,7 +138,12 @@ def load_settings(
                 str(_require(detector, "data_yaml", "detector")), root
             ),
             confidence=confidence,
+            candidate_confidence=candidate_confidence,
+            class_confidence=class_confidence,
             nms_iou=nms_iou,
+            agnostic_nms=bool(detector.get("agnostic_nms", False)),
+            duplicate_iou=duplicate_iou,
+            duplicate_ios=duplicate_ios,
             image_size=int(_require(detector, "image_size", "detector")),
             device=str(detector.get("device", "auto")),
         ),

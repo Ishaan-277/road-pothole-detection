@@ -106,6 +106,62 @@ def draw_severity_label(
     )
 
 
+def draw_detection_label(
+    image,
+    box: tuple[int, int, int, int],
+    class_id: int,
+    class_name: str,
+    confidence: float,
+    *,
+    track_id: int | None = None,
+    severity: str = "",
+    severity_confidence: float | None = None,
+) -> None:
+    """Draw one consolidated label for a post-processed detection."""
+    colors = {
+        0: (255, 170, 0),
+        1: (255, 80, 80),
+        2: (0, 200, 255),
+        3: (0, 70, 255),
+    }
+    color = colors.get(class_id, (120, 255, 120))
+    x1, y1, x2, y2 = box
+    cv2.rectangle(image, (x1, y1), (x2, y2), color, 2)
+
+    prefix = f"#{track_id} " if track_id is not None else ""
+    text = f"{prefix}{class_name} {confidence:.2f}"
+    if severity and severity_confidence is not None:
+        text += f" | severity {severity} {severity_confidence:.2f}"
+
+    image_height, image_width = image.shape[:2]
+    font_scale = max(0.45, min(image_height, image_width) / 1400.0)
+    thickness = max(1, round(font_scale * 2))
+    (text_width, text_height), baseline = cv2.getTextSize(
+        text, cv2.FONT_HERSHEY_SIMPLEX, font_scale, thickness
+    )
+    text_x = max(0, min(x1, image_width - text_width - 8))
+    text_y = y1 - 8
+    if text_y - text_height < 0:
+        text_y = min(image_height - baseline - 4, y1 + text_height + 10)
+    cv2.rectangle(
+        image,
+        (text_x, text_y - text_height - 5),
+        (min(image_width - 1, text_x + text_width + 8), text_y + baseline + 3),
+        color,
+        -1,
+    )
+    cv2.putText(
+        image,
+        text,
+        (text_x + 4, text_y),
+        cv2.FONT_HERSHEY_SIMPLEX,
+        font_scale,
+        (255, 255, 255),
+        thickness,
+        cv2.LINE_AA,
+    )
+
+
 def write_reports(
     output_dir: Path,
     rows: Iterable[dict[str, Any]],

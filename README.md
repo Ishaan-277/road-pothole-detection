@@ -2,7 +2,7 @@
 
 This project detects four road-defect classes with YOLO11 and classifies detected potholes by visual severity. The current repository contains a trained detection workflow, evaluation utilities, a manual severity-labelling workflow, and a ResNet18 severity-classification experiment.
 
-The project is currently an ML research prototype. Image detection and severity-model training are implemented; video tracking, cross-frame deduplication, analytics, and the dashboard remain planned.
+The project is currently an ML research prototype. Image inference, severity classification, and clip-level video tracking are implemented; GPS-backed cross-journey deduplication, analytics, and the dashboard remain planned.
 
 ## Current capabilities
 
@@ -12,6 +12,8 @@ The project is currently an ML research prototype. Image detection and severity-
 - Produce annotated validation samples and CSV detection reports.
 - Collect manual low, medium, and high pothole-severity labels.
 - Train and evaluate a three-class ResNet18 severity classifier.
+- Run end-to-end image inference with class-specific confidence filtering and cross-class duplicate suppression.
+- Track defects through a continuous video clip with ByteTrack and aggregate pothole severity by track.
 
 See [Project Status](docs/PROJECT_STATUS.md) for the implementation roadmap and [Experiment Log](docs/EXPERIMENT_LOG.md) for the recorded results.
 
@@ -47,7 +49,8 @@ docs/
 src/
   detection/                   YOLO training, evaluation, and inspection
   severity/                    Severity labelling, preparation, and training
-  tracking/                    Reserved for video tracking work
+  pipeline/                    End-to-end image inference and reporting
+  video/                       Clip-level tracking and video reporting
   analytics/                   Reserved for reporting and analytics work
 data/                          Local images and labels; ignored by Git
 outputs/                       Training and evaluation artifacts; ignored by Git
@@ -78,7 +81,7 @@ Run the end-to-end image pipeline on one image or a directory:
 python -m src.pipeline --input path\to\images --output outputs\inspection
 ```
 
-Useful overrides include `--recursive`, `--device cpu`, `--confidence 0.25`, `--iou 0.40`, and `--no-severity`. The pipeline writes annotated images, `detections.csv`, and a versioned `report.json` containing run configuration and image-level status.
+Useful overrides include `--recursive`, `--device cpu`, `--confidence 0.25`, `--iou 0.70`, and `--no-severity`. The default configuration generates candidates at `0.05` with recall-oriented NMS, keeps cracks at `0.20` and potholes at `0.10`, then applies stricter class-agnostic overlap and containment checks to final output. A `--confidence` override intentionally replaces those per-class thresholds with one global value. The pipeline writes annotated images, `detections.csv`, and a versioned `report.json` containing run configuration and image-level status.
 
 Run video detection, ByteTrack association, and track-level severity aggregation:
 
@@ -99,6 +102,12 @@ Evaluate detector thresholds and inspect the selected setting:
 ```powershell
 python src/detection/evaluate_thresholds.py
 python src/detection/inspect_selected_thresholds.py
+```
+
+Run the corrected conservative fine-tuning recipe (a multi-hour GPU job):
+
+```powershell
+python src/detection/finetune_yolo11s_640_lowlr.py
 ```
 
 Build and train the severity classifier:
