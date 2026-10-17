@@ -17,6 +17,7 @@ The project provides offline image and video road-defect inference, clip-level t
 | Threshold evaluation | Complete | Confidence/NMS grid and visual comparisons generated. |
 | Annotation review tooling | Complete | Ground-truth and prediction comparisons generated for sample images. |
 | Manual severity labelling | Complete for initial batch | 327 detections reviewed from 100 images. |
+| Expanded severity review | Batch prepared; human review pending | 250 source images and 772 post-processed D40 candidates in a resumable two-reviewer workflow. |
 | Severity dataset preparation | Complete | 310 usable examples after removing 17 duplicates. |
 | Fixed severity splits | Complete | Deterministic 202/40/68 train/validation/test examples with source-image isolation. |
 | ResNet18 severity baseline | Complete | Initial three-class model trained and evaluated. |
@@ -32,7 +33,7 @@ The project provides offline image and video road-defect inference, clip-level t
 | Per-class detector evaluation | Complete | Exports aggregate and per-class CSV/JSON metrics. |
 | Duplicate-box suppression | Complete for single frames | Class-agnostic NMS plus IoU/containment filtering is shared by image and video output. |
 | Missed-pothole mitigation | Initial pass complete | Candidates start at 0.05 and D40 is retained from 0.10; real-route acceptance testing remains required. |
-| Automated tests | Inference-quality phase complete | Nineteen tests cover configuration, dataset auditing, post-processing, image I/O, reports, severity splits, and track aggregation. |
+| Automated tests | Severity-review phase complete | Twenty-two tests cover configuration, dataset auditing, post-processing, review resolution, dataset merging, image I/O, reports, severity splits, and track aggregation. |
 
 ## Current model choices
 
@@ -107,11 +108,23 @@ A 960 px validation run was rejected: aggregate mAP50-95 fell to `0.2636` becaus
 - Verified the difficult Norway sample: all three labelled pothole regions were recovered, with one additional low-confidence D40 candidate requiring acceptance-set review.
 - Re-verified native-resolution video: 10 frames, 3 stable tracks, 1 pothole track, and no untracked observations.
 
+### Phase 6 — Expanded severity learning (review stage, 2026-10-17)
+
+- Replaced the hard-coded, non-resumable collector with a configurable batch generator that checkpoints progress safely.
+- Generated a local batch of 250 source images containing 772 D40 candidates, crops, and contextual annotations.
+- Added a Streamlit review interface for primary review, sampled blind second review, and disagreement adjudication.
+- Added explicit label provenance and multi-batch merging without silently resolving reviewer disagreement.
+- Improved deterministic source-image-isolated splitting by searching for closer class balance.
+- Added an ordinal-aware loss, early stopping, macro/ordinal metrics, and confidence-coverage reporting.
+- The ordinal ResNet18 experiment on the original 310 examples was not promoted: accuracy `0.6029` and balanced accuracy `0.5770` were below the deployed `0.6176`/`0.6038` baseline.
+- Human review of the new batch is the remaining prerequisite before training the expanded model.
+
 ## Recommended next milestones
 
-1. Build a fixed, manually reviewed detection acceptance set containing misses, duplicates, small potholes, shadows, patches, and puddles.
-2. Run the corrected AdamW fine-tune and promote its checkpoint only if it beats `0.3422` mAP50-95 and improves D40 recall on the acceptance set.
-3. Document dataset provenance and provide a reproducible dataset preparation/splitting script.
-4. Expand and independently review the severity dataset, then define severity acceptance metrics.
-5. Validate resolution, throughput, and track stability on real inspection footage.
-6. Implement GPS-backed cross-journey deduplication, analytics, reporting, and the Streamlit interface.
+1. Complete primary review of the 772-candidate severity batch, independently review 20%, and adjudicate disagreements.
+2. Retrain severity on the merged dataset and promote only if macro F1, balanced accuracy, and ordinal error improve on the fixed test set.
+3. Build a fixed, manually reviewed detection acceptance set containing misses, duplicates, small potholes, shadows, patches, and puddles.
+4. Run the corrected AdamW detector fine-tune and promote only if it beats `0.3422` mAP50-95 and improves D40 recall on the acceptance set.
+5. Document dataset provenance and provide a reproducible dataset preparation/splitting script.
+6. Validate resolution, throughput, and track stability on real inspection footage.
+7. Implement GPS-backed cross-journey deduplication, analytics, reporting, and the operational dashboard.

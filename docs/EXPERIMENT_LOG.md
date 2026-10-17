@@ -109,6 +109,32 @@ Architecture: ImageNet-pretrained ResNet18 with a three-class output layer.
 
 The result establishes a baseline but is not sufficient for production use because the labelled dataset and test set are small.
 
+### Ordinal-aware ResNet18 experiment
+
+On 2026-10-17, the same fixed 202/40/68 split was used to test weighted cross-entropy plus a distance-aware ordinal penalty. Model selection used validation balanced accuracy with early stopping.
+
+- Best epoch: 2 of 15; stopped after epoch 7.
+- Test accuracy: `0.6029`.
+- Test balanced accuracy: `0.5770`.
+- Macro F1: `0.5730`.
+- Ordinal mean absolute error: `0.5000` severity levels.
+- Quadratic weighted kappa: `0.2941`.
+- Within-one-level accuracy: `0.8971`.
+
+The experiment did not beat the deployed flat-classification baseline and was not promoted. At confidence `0.60`, selective accuracy reached `0.7826`, but coverage was only `0.3382`; this supports an eventual `uncertain` outcome but does not compensate for the small dataset.
+
+## Expanded severity review batch
+
+The 2026-10-17 review batch was generated with the deployed D40 thresholds and post-processing:
+
+- Source images selected: 250.
+- Validation images inspected to find them: 1,731.
+- Candidate crops requiring review: 772.
+- Candidate confidence threshold: `0.05`; D40 final threshold: `0.10`.
+- Reviewer-1 labels complete: 0 at generation time.
+
+The batch is intentionally unlabelled in Git and stored under ignored `outputs/`. It must not enter training until human review resolves false positives, uncertain examples, duplicates, and reviewer disagreements.
+
 ## End-to-end pipeline smoke test
 
 On 2026-10-17, the unified image pipeline was tested with both trained checkpoints on `rdd_Norway_Norway_000440.jpg` using confidence `0.20` and NMS IoU `0.40`.
