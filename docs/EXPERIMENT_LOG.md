@@ -83,3 +83,17 @@ Architecture: ImageNet-pretrained ResNet18 with a three-class output layer.
 | High | 0.6000 | 0.6000 | 0.6000 | 15 |
 
 The result establishes a baseline but is not sufficient for production use because the labelled dataset and test set are small.
+
+## End-to-end pipeline smoke test
+
+On 2026-10-17, the unified image pipeline was tested with both trained checkpoints on `rdd_Norway_Norway_000440.jpg` using confidence `0.20` and NMS IoU `0.40`.
+
+- Images processed: 1
+- Total detections: 5
+- Pothole detections: 1
+- Predicted pothole severity: high
+- Severity confidence: 0.9893
+- Expected manual severity label from the review dataset: high
+- Outputs verified: annotated image, CSV report, and schema-versioned JSON report
+
+This is a functional smoke test, not an independent accuracy measurement.

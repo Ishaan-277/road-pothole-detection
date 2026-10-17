@@ -72,6 +72,14 @@ If the Python launcher is unavailable, use the installed interpreter directly:
 
 ## Main workflows
 
+Run the end-to-end image pipeline on one image or a directory:
+
+```powershell
+python -m src.pipeline --input path\to\images --output outputs\inspection
+```
+
+Useful overrides include `--recursive`, `--device cpu`, `--confidence 0.25`, `--iou 0.40`, and `--no-severity`. The pipeline writes annotated images, `detections.csv`, and a versioned `report.json` containing run configuration and image-level status.
+
 Train the baseline detector:
 
 ```powershell

@@ -19,17 +19,17 @@ The project currently provides an offline image-based road-defect detector and a
 | Manual severity labelling | Complete for initial batch | 327 detections reviewed from 100 images. |
 | Severity dataset preparation | Complete | 310 usable examples after removing 17 duplicates. |
 | ResNet18 severity baseline | Complete | Initial three-class model trained and evaluated. |
-| End-to-end image inference | Not started | Detector and severity model are not yet connected in one command. |
+| End-to-end image inference | Complete | One CLI processes an image or directory through detection and optional D40 severity classification. |
 | Video ingestion and processing | Not started | No video pipeline currently exists. |
 | Multi-frame tracking | Not started | `src/tracking` is reserved for this work. |
 | Unique-defect deduplication | Not started | Current duplicate handling is manual within labelled crops. |
 | Road-maintenance analytics | Not started | `src/analytics` is reserved for this work. |
 | Streamlit dashboard | Not started | Streamlit is installed but no application exists. |
-| Exportable inspection reports | Not started | Current output is limited to images, CSV files, and training plots. |
+| Exportable inspection reports | Image phase complete | The image pipeline exports annotated images plus versioned CSV/JSON reports. PDF and route-level reports remain planned. |
 | Shared pipeline configuration | Complete | Model paths, thresholds, image sizes, output settings, and device selection are centralized. |
 | Dataset integrity audit | Complete | Validates pairs, rows, ranges, classes, and duplicate annotations; optional cross-split hashing is available. |
 | Per-class detector evaluation | Complete | Exports aggregate and per-class CSV/JSON metrics. |
-| Automated tests | Foundation complete | Six fast tests cover configuration and dataset-audit logic; inference tests remain planned. |
+| Automated tests | Image phase complete | Eleven tests cover configuration, dataset auditing, image discovery, cropping, path preservation, and report serialization. |
 
 ## Current model choices
 
@@ -55,13 +55,28 @@ At the operational thresholds, D40 pothole performance on the current validation
 - Model artifacts and datasets are local-only and cannot be reconstructed from the repository.
 - Dependency versions are not yet locked to exact releases.
 
+## Phase completion
+
+### Phase 1 — Evaluation foundation (complete, 2026-10-17)
+
+- Centralized pipeline configuration and automatic CPU/GPU selection.
+- Dataset-integrity audit with duplicate-row detection and optional exact cross-split hashing.
+- Aggregate and per-class detector evaluation exports.
+- Initial automated test suite.
+
+### Phase 2 — Unified image inference (complete, 2026-10-17)
+
+- Single-image and directory input, including optional recursive discovery.
+- YOLO defect detection and ResNet18 severity classification for D40 crops.
+- Resolution-aware annotated image output.
+- CSV and schema-versioned JSON reports with model paths and thresholds.
+- Verified against a real validation image and both trained checkpoints.
+
 ## Recommended next milestones
 
-1. Add an end-to-end image inference command that emits detections and severity predictions.
-2. Extend automated tests to crop creation, model adapters, and report generation.
-3. Document dataset provenance and provide a reproducible dataset preparation/splitting script.
-4. Expand and independently review the severity dataset.
-5. Define detector and severity acceptance metrics on a fixed holdout set.
-6. Add video inference and a tracker such as ByteTrack.
-7. Implement spatial and temporal deduplication for unique pothole counting.
-8. Build analytics, reporting, and the Streamlit interface after the inference pipeline stabilizes.
+1. Document dataset provenance and provide a reproducible dataset preparation/splitting script.
+2. Expand and independently review the severity dataset.
+3. Define severity acceptance metrics on a fixed holdout set.
+4. Add video inference and a tracker such as ByteTrack.
+5. Implement spatial and temporal deduplication for unique pothole counting.
+6. Build analytics, reporting, and the Streamlit interface after the inference pipeline stabilizes.
